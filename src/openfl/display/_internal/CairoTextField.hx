@@ -2,6 +2,18 @@ package openfl.display._internal;
 
 import openfl.text.Font;
 #if !flash
+#if (wasmjs)
+import openfl.text.TextField;
+import openfl.display.CairoRenderer;
+import openfl.geom.Matrix;
+
+class CairoTextField
+{
+	public static function render(textField:TextField, renderer:CairoRenderer, transform:Matrix):Void {}
+	public static function renderDrawable(textField:TextField, renderer:CairoRenderer):Void {}
+	public static function renderDrawableMask(textField:TextField, renderer:CairoRenderer):Void {}
+}
+#else
 import openfl.text._internal.TextEngine;
 import openfl.display.BitmapData;
 import openfl.display.CairoRenderer;
@@ -298,6 +310,7 @@ class CairoTextField
 
 					#if openfl_cairo_show_text
 					cairo.showText(text.substring(group.startIndex, group.endIndex));
+					var glyphs:Array<CairoGlyph> = [];
 					#else
 					// TODO: Improve performance
 
@@ -545,4 +558,5 @@ class CairoTextField
 		CairoDisplayObject.renderDrawableMask(textField, renderer);
 	}
 }
+#end
 #end

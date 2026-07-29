@@ -32,6 +32,8 @@ import lime.ui.KeyModifier;
 #end
 #if (js && html5)
 import js.html.DivElement;
+#elseif (wasmjs)
+import wjs.html.DivElement;
 #end
 
 /**
@@ -722,7 +724,7 @@ class TextField extends InteractiveObject
 	@:noCompletion private var __htmlText:UTF8String;
 	@:noCompletion private var __textEngine:TextEngine;
 	@:noCompletion private var __textFormat:TextFormat;
-	#if (js && html5)
+	#if ((js && html5) || (wasmjs))
 	@:noCompletion private var __div:DivElement;
 	@:noCompletion private var __renderedOnCanvasWhileOnDOM:Bool = false;
 	@:noCompletion private var __forceCachedBitmapUpdate:Bool = false;
@@ -860,7 +862,7 @@ class TextField extends InteractiveObject
 		__displayAsPassword = false;
 		__passwordChar = "*";
 		__graphics = new Graphics(this);
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		// Graphics adds an implicit moveTo(0, 0) for HTML Canvas, but we need
 		// an empty command buffer for TextField or it won't render correctly.
 		// calling clear() adds moveTo(0, 0) as the first command again, so just
@@ -1857,7 +1859,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private inline function __getAdvance(position):Float
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		return position;
 		#else
 		return position.advance.x;
@@ -2323,7 +2325,7 @@ class TextField extends InteractiveObject
 			__selectionIndex = __caretIndex;
 		}
 
-		var enableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
+		var enableInput = #if ((js && html5) || (wasmjs)) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 
 		if (enableInput)
 		{
@@ -2349,7 +2351,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function __stopTextInput():Void
 	{
-		var disableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
+		var disableInput = #if ((js && html5) || (wasmjs)) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 
 		if (disableInput)
 		{
@@ -2570,7 +2572,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function __updateText(value:String):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM)
 		{
 			__forceCachedBitmapUpdate = __text != value;
@@ -2610,7 +2612,7 @@ class TextField extends InteractiveObject
 			}
 		}
 
-		if (!__displayAsPassword #if (js && html5) || (DisplayObject.__supportDOM && !__renderedOnCanvasWhileOnDOM) #end)
+		if (!__displayAsPassword #if ((js && html5) || (wasmjs)) || (DisplayObject.__supportDOM && !__renderedOnCanvasWhileOnDOM) #end)
 		{
 			__textEngine.text = __text;
 		}
@@ -2868,7 +2870,7 @@ class TextField extends InteractiveObject
 
 		value = HTMLParser.parse(value, multiline, __styleSheet, __textFormat, __textEngine.textFormatRanges);
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		// if (DisplayObject.__supportDOM)
 		// {
 		// 	// TODO: Why is this parsing text format ranges, only to ignore them?
@@ -3355,7 +3357,7 @@ class TextField extends InteractiveObject
 
 				var setDirty = true;
 
-				#if (js && html5)
+				#if ((js && html5) || (wasmjs))
 				if (DisplayObject.__supportDOM)
 				{
 					if (__renderedOnCanvasWhileOnDOM)
@@ -3418,7 +3420,7 @@ class TextField extends InteractiveObject
 				__stopCursorTimer();
 				__startCursorTimer();
 
-				#if (js && html5)
+				#if ((js && html5) || (wasmjs))
 				if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM)
 				{
 					__forceCachedBitmapUpdate = true;
@@ -3546,7 +3548,7 @@ class TextField extends InteractiveObject
 		{
 			#if (mac || ios || tvos)
 			return modifier.metaKey;
-			#elseif js
+			#elseif (js || wasmjs)
 			return modifier.metaKey || modifier.ctrlKey;
 			#else
 			return modifier.ctrlKey && !modifier.altKey;

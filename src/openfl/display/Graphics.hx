@@ -22,6 +22,9 @@ import lime.graphics.cairo.Cairo;
 #if (js && html5)
 import js.html.CanvasElement;
 import js.html.CanvasRenderingContext2D;
+#elseif (wasmjs)
+import wjs.html.CanvasElement;
+import wjs.html.CanvasRenderingContext2D;
 #end
 
 /**
@@ -94,6 +97,10 @@ import js.html.CanvasRenderingContext2D;
 	#if (js && html5)
 	@:noCompletion private var __canvas:CanvasElement;
 	@:noCompletion private var __context:#if lime CanvasRenderingContext2D #else Dynamic #end;
+	#elseif (wasmjs)
+	@:noCompletion private var __canvas:CanvasElement;
+	@:noCompletion private var __context:CanvasRenderingContext2D;
+	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __cairo:#if lime Cairo #else Dynamic #end;
 	#else
 	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __cairo:#if lime Cairo #else Dynamic #end;
 	#end
@@ -120,7 +127,7 @@ import js.html.CanvasRenderingContext2D;
 
 		__shaderBufferPool = new ObjectPool<ShaderBuffer>(function() return new ShaderBuffer());
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		moveTo(0, 0);
 		#end
 	}
@@ -431,7 +438,7 @@ import js.html.CanvasRenderingContext2D;
 		__positionX = 0;
 		__positionY = 0;
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		moveTo(0, 0);
 		#end
 	}
@@ -879,9 +886,6 @@ import js.html.CanvasRenderingContext2D;
 			}
 		}
 
-		var tileRect = Rectangle.__pool.get();
-		var tileTransform = Matrix.__pool.get();
-
 		var minX = Math.POSITIVE_INFINITY;
 		var minY = Math.POSITIVE_INFINITY;
 		var maxX = Math.NEGATIVE_INFINITY;
@@ -894,41 +898,39 @@ import js.html.CanvasRenderingContext2D;
 		{
 			ri = (hasIndices ? (indices[i] * 4) : i * 4);
 			if (ri < 0) continue;
-			tileRect.setTo(0, 0, rects[ri + 2], rects[ri + 3]);
+			var rw = rects[ri + 2], rh = rects[ri + 3];
+			if (rw <= 0 || rh <= 0) continue;
 
-			if (tileRect.width <= 0 || tileRect.height <= 0)
+			if (transformABCD)
 			{
-				continue;
-			}
-
-			if (transformABCD && transformXY)
-			{
-				ti = i * 6;
-				tileTransform.setTo(transforms[ti], transforms[ti + 1], transforms[ti + 2], transforms[ti + 3], transforms[ti + 4], transforms[ti + 5]);
-			}
-			else if (transformABCD)
-			{
-				ti = i * 4;
-				tileTransform.setTo(transforms[ti], transforms[ti + 1], transforms[ti + 2], transforms[ti + 3], tileRect.x, tileRect.y);
-			}
-			else if (transformXY)
-			{
-				ti = i * 2;
-				tileTransform.tx = transforms[ti];
-				tileTransform.ty = transforms[ti + 1];
+				var a:Float, b:Float, c:Float, d:Float, tx:Float, ty:Float;
+				if (transformXY)
+				{
+					ti = i * 6;
+					a = transforms[ti]; b = transforms[ti + 1]; c = transforms[ti + 2]; d = transforms[ti + 3];
+					tx = transforms[ti + 4]; ty = transforms[ti + 5];
+				}
+				else
+				{
+					ti = i * 4;
+					a = transforms[ti]; b = transforms[ti + 1]; c = transforms[ti + 2]; d = transforms[ti + 3];
+					tx = 0; ty = 0;
+				}
+				var arw = a * rw, brw = b * rw, crh = c * rh, drh = d * rh;
+				var px0 = tx, py0 = ty, px1 = arw + tx, py1 = brw + ty, px2 = crh + tx, py2 = drh + ty, px3 = arw + crh + tx, py3 = brw + drh + ty;
+				if (px0 < minX) minX = px0; if (px1 < minX) minX = px1; if (px2 < minX) minX = px2; if (px3 < minX) minX = px3;
+				if (px0 > maxX) maxX = px0; if (px1 > maxX) maxX = px1; if (px2 > maxX) maxX = px2; if (px3 > maxX) maxX = px3;
+				if (py0 < minY) minY = py0; if (py1 < minY) minY = py1; if (py2 < minY) minY = py2; if (py3 < minY) minY = py3;
+				if (py0 > maxY) maxY = py0; if (py1 > maxY) maxY = py1; if (py2 > maxY) maxY = py2; if (py3 > maxY) maxY = py3;
 			}
 			else
 			{
-				tileTransform.tx = tileRect.x;
-				tileTransform.ty = tileRect.y;
+				var tx:Float, ty:Float;
+				if (transformXY) { ti = i * 2; tx = transforms[ti]; ty = transforms[ti + 1]; }
+				else { tx = 0; ty = 0; }
+				var rr = tx + rw, bb = ty + rh;
+				if (tx < minX) minX = tx; if (ty < minY) minY = ty; if (rr > maxX) maxX = rr; if (bb > maxY) maxY = bb;
 			}
-
-			tileRect.__transform(tileRect, tileTransform);
-
-			if (minX > tileRect.x) minX = tileRect.x;
-			if (minY > tileRect.y) minY = tileRect.y;
-			if (maxX < tileRect.right) maxX = tileRect.right;
-			if (maxY < tileRect.bottom) maxY = tileRect.bottom;
 		}
 
 		__inflateBounds(minX, minY);
@@ -938,9 +940,6 @@ import js.html.CanvasRenderingContext2D;
 
 		__dirty = true;
 		__visible = true;
-
-		Rectangle.__pool.release(tileRect);
-		Matrix.__pool.release(tileTransform);
 	}
 
 	/**
@@ -1645,7 +1644,7 @@ import js.html.CanvasRenderingContext2D;
 
 	@:noCompletion private function __cleanup():Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (__bounds != null && __canvas != null)
 		{
 			__dirty = true;
@@ -1661,7 +1660,7 @@ import js.html.CanvasRenderingContext2D;
 
 		__bitmap = null;
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (__canvas != null)
 		{
 			__canvas.width = 0;
@@ -1674,7 +1673,7 @@ import js.html.CanvasRenderingContext2D;
 			__context.clearRect(0, 0, 0, 0);
 			__context = null;
 		}
-		#else
+		#elseif lime_cairo
 		__cairo = null;
 		#end
 	}
@@ -1700,7 +1699,7 @@ import js.html.CanvasRenderingContext2D;
 		{
 			if (shapeFlag)
 			{
-				#if (js && html5)
+				#if ((js && html5) || (wasmjs))
 				return CanvasGraphics.hitTest(this, px, py);
 				#elseif (lime_cffi)
 				return CairoGraphics.hitTest(this, px, py);

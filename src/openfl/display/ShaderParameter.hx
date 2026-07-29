@@ -90,7 +90,7 @@ import openfl.display3D.Context3D;
 @:noDebug
 #end
 @:access(openfl.display3D.Context3D)
-#if (!js && !display)
+#if (!js && !display && !jvm)
 @:generic
 #end
 @:final class ShaderParameter<T> /*implements Dynamic*/
@@ -185,7 +185,11 @@ import openfl.display3D.Context3D;
 
 	@:noCompletion private function __updateGL(context:Context3D, overrideValue:Array<T> = null):Void
 	{
+		#if (wasmjs)
+		if (index == null) return;
+		#else
 		if (index < 0) return;
+		#end
 
 		#if lime
 		var gl = context.gl;
@@ -421,7 +425,11 @@ import openfl.display3D.Context3D;
 
 	@:noCompletion private function __updateGLFromBuffer(context:Context3D, buffer:Float32Array, position:Int, length:Int, bufferOffset:Int):Void
 	{
+		#if (wasmjs)
+		if (index == null) return;
+		#else
 		if (index < 0) return;
+		#end
 
 		#if lime
 		var gl = context.gl;

@@ -98,10 +98,17 @@ class Error #if (haxe_ver >= "4.1.0") extends haxe.Exception #elseif (openfl_dyn
 
 		@returns	A string representation of the call stack.
 	**/
+	#if java
+	public function getStackTraceString():String
+	{
+		return CallStack.toString(CallStack.exceptionStack());
+	}
+	#else
 	public function getStackTrace():String
 	{
 		return CallStack.toString(CallStack.exceptionStack());
 	}
+	#end
 
 	// @:noCompletion @:dox(hide) public static function throwError (type:Class<Dynamic>, index:UInt, ?p1:Dynamic, ?p2:Dynamic, ?p3:Dynamic, ?p4:Dynamic, ?p5:Dynamic):Dynamic;
 	/**

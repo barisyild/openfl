@@ -72,6 +72,46 @@ class TextureBase extends EventDispatcher
 		{
 			__textureInternalFormat = gl.RGBA;
 
+			#if (wasmjs)
+			var bgraExt:wjs._jso.JSObject = gl.getExtensionObject("EXT_texture_format_BGRA8888");
+			if (bgraExt == null) bgraExt = gl.getExtensionObject("APPLE_texture_format_BGRA8888");
+
+			if (bgraExt != null && wjs.Callbacks.hasField(bgraExt, "BGRA_EXT"))
+			{
+				__supportsBGRA = true;
+				__textureFormat = wjs.Callbacks.getIntField(bgraExt, "BGRA_EXT");
+			}
+			else
+			{
+				__supportsBGRA = false;
+				__textureFormat = gl.RGBA;
+			}
+
+			__compressedFormats = new Map();
+			__compressedFormatsAlpha = new Map();
+
+			var dxtExt:wjs._jso.JSObject = gl.getExtensionObject("WEBGL_compressed_texture_s3tc");
+			var etc1Ext:wjs._jso.JSObject = gl.getExtensionObject("WEBGL_compressed_texture_etc1");
+			var pvrtcExt:wjs._jso.JSObject = gl.getExtensionObject("WEBKIT_WEBGL_compressed_texture_pvrtc");
+
+			if (dxtExt != null)
+			{
+				__compressedFormats[ATFGPUFormat.DXT] = wjs.Callbacks.getIntField(dxtExt, "COMPRESSED_RGBA_S3TC_DXT1_EXT");
+				__compressedFormatsAlpha[ATFGPUFormat.DXT] = wjs.Callbacks.getIntField(dxtExt, "COMPRESSED_RGBA_S3TC_DXT5_EXT");
+			}
+
+			if (etc1Ext != null)
+			{
+				__compressedFormats[ATFGPUFormat.ETC1] = wjs.Callbacks.getIntField(etc1Ext, "COMPRESSED_RGB_ETC1_WEBGL");
+				__compressedFormatsAlpha[ATFGPUFormat.ETC1] = wjs.Callbacks.getIntField(etc1Ext, "COMPRESSED_RGB_ETC1_WEBGL");
+			}
+
+			if (pvrtcExt != null)
+			{
+				__compressedFormats[ATFGPUFormat.PVRTC] = wjs.Callbacks.getIntField(pvrtcExt, "COMPRESSED_RGB_PVRTC_4BPPV1_IMG");
+				__compressedFormatsAlpha[ATFGPUFormat.PVRTC] = wjs.Callbacks.getIntField(pvrtcExt, "COMPRESSED_RGBA_PVRTC_4BPPV1_IMG");
+			}
+			#else
 			var bgraExtension:Dynamic = null;
 			#if (!js || !html5)
 			bgraExtension = gl.getExtension("EXT_bgra");
@@ -133,6 +173,7 @@ class TextureBase extends EventDispatcher
 				__compressedFormats[ATFGPUFormat.PVRTC] = pvrtcExtension.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
 				__compressedFormatsAlpha[ATFGPUFormat.PVRTC] = pvrtcExtension.COMPRESSED_RGBA_PVRTC_4BPPV1_IMG;
 			}
+			#end
 		}
 
 		__internalFormat = __textureInternalFormat;
@@ -419,6 +460,21 @@ class TextureBase extends EventDispatcher
 		else
 		{
 			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, format, gl.UNSIGNED_BYTE, image.src);
+		}
+		#elseif (wasmjs)
+		var __src:wjs._jso.JSObject = null;
+		if (image.type != DATA)
+		{
+			__src = cast @:privateAccess image.buffer.__srcImage;
+			if (wjs.Callbacks.jsIsNull(__src) && @:privateAccess image.buffer.__srcCanvas != null) __src = cast @:privateAccess image.buffer.__srcCanvas;
+		}
+		if (!wjs.Callbacks.jsIsNull(__src))
+		{
+			wjs.Callbacks.texImageBitmap(cast gl, gl.TEXTURE_2D, internalFormat, format, gl.UNSIGNED_BYTE, __src, image.width, image.height);
+		}
+		else
+		{
+			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, gl.UNSIGNED_BYTE, image.data);
 		}
 		#else
 		gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, gl.UNSIGNED_BYTE, image.data);

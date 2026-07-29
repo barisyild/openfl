@@ -40,6 +40,8 @@ import lime.math.Vector2;
 #end
 #if (js && html5)
 import js.html.CanvasElement;
+#elseif (wasmjs)
+import wjs.html.CanvasElement;
 #end
 #if gl_stats
 import openfl.display._internal.stats.Context3DStats;
@@ -287,7 +289,7 @@ class BitmapData implements IBitmapDrawable
 			#if lime
 			#if sys
 			var buffer = new ImageBuffer(new UInt8Array(width * height * 4), width, height);
-			buffer.format = BGRA32;
+			buffer.format = #if wasmjs RGBA32 #else BGRA32 #end;
 			buffer.premultiplied = true;
 
 			image = new Image(buffer, 0, 0, width, height);
@@ -1018,7 +1020,7 @@ class BitmapData implements IBitmapDrawable
 				Matrix.__pool.release(boundsMatrix);
 			}
 
-			#if (js && html5)
+			#if ((js && html5) || (wasmjs))
 			ImageCanvasUtil.convertToCanvas(image);
 			var renderer = new CanvasRenderer(image.buffer.__srcContext);
 			#else
@@ -1037,7 +1039,7 @@ class BitmapData implements IBitmapDrawable
 				renderer.__pushMaskRect(clipRect, clipMatrix);
 			}
 
-			#if (js && html5)
+			#if ((js && html5) || (wasmjs))
 			__drawCanvas(source, renderer);
 			#else
 			__drawCairo(source, renderer);
@@ -1324,6 +1326,21 @@ class BitmapData implements IBitmapDrawable
 
 		var bitmapData = new BitmapData(0, 0, transparent, 0);
 		bitmapData.__fromImage(Image.fromCanvas(canvas));
+		bitmapData.image.transparent = transparent;
+		return bitmapData;
+	}
+	#elseif (wasmjs)
+	public static function fromCanvas(canvas:CanvasElement, transparent:Bool = true):BitmapData
+	{
+		if (canvas == null) return null;
+
+		var buffer = new lime.graphics.ImageBuffer(null, canvas.width, canvas.height);
+		@:privateAccess buffer.__srcCanvas = canvas;
+		buffer.premultiplied = true;
+		var image = new lime.graphics.Image(buffer, 0, 0, canvas.width, canvas.height, null, lime.graphics.ImageType.CANVAS);
+
+		var bitmapData = new BitmapData(0, 0, transparent, 0);
+		bitmapData.__fromImage(image);
 		bitmapData.image.transparent = transparent;
 		return bitmapData;
 	}
@@ -2282,7 +2299,19 @@ class BitmapData implements IBitmapDrawable
 
 			var textureImage = image;
 
-			#if (js && html5)
+			#if (wasmjs)
+			if (textureImage.type != CANVAS)
+			{
+				if (#if openfl_power_of_two !textureImage.powerOfTwo || #end (!textureImage.premultiplied && textureImage.transparent))
+				{
+					textureImage = textureImage.clone();
+					textureImage.premultiplied = true;
+					#if openfl_power_of_two
+					textureImage.powerOfTwo = true;
+					#end
+				}
+			}
+			#elseif (js && html5)
 			if (#if openfl_power_of_two true || #end (!TextureBase.__supportsBGRA && textureImage.format != RGBA32))
 			{
 				textureImage = textureImage.clone();
@@ -3314,8 +3343,16 @@ class BitmapData implements IBitmapDrawable
 			__textureHeight = height;
 
 			#if sys
+			#if (wasmjs)
+			if (image.type != CANVAS)
+			{
+				image.format = RGBA32;
+				image.premultiplied = true;
+			}
+			#else
 			image.format = BGRA32;
 			image.premultiplied = true;
+			#end
 			#end
 
 			readable = true;

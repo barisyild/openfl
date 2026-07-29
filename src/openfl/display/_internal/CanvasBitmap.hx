@@ -9,12 +9,13 @@ import lime._internal.graphics.ImageCanvasUtil; // TODO
 #end
 @:access(openfl.display.Bitmap)
 @:access(openfl.display.BitmapData)
+@:access(lime.graphics.ImageBuffer)
 @SuppressWarnings("checkstyle:FieldDocComment")
 class CanvasBitmap
 {
 	public static inline function render(bitmap:Bitmap, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (!bitmap.__renderable) return;
 
 		var alpha = renderer.__getAlpha(bitmap.__worldAlpha);
@@ -40,12 +41,13 @@ class CanvasBitmap
 
 			if (scrollRect == null)
 			{
-				context.drawImage(bitmap.__bitmapData.image.src, 0, 0, bitmap.__bitmapData.image.width, bitmap.__bitmapData.image.height);
+				context.drawImage(#if (js && html5) bitmap.__bitmapData.image.src #else bitmap.__bitmapData.image.buffer.__srcCanvas #end, 0, 0,
+					bitmap.__bitmapData.image.width, bitmap.__bitmapData.image.height);
 			}
 			else
 			{
-				context.drawImage(bitmap.__bitmapData.image.src, scrollRect.x, scrollRect.y, scrollRect.width, scrollRect.height, scrollRect.x, scrollRect.y,
-					scrollRect.width, scrollRect.height);
+				context.drawImage(#if (js && html5) bitmap.__bitmapData.image.src #else bitmap.__bitmapData.image.buffer.__srcCanvas #end, scrollRect.x,
+					scrollRect.y, scrollRect.width, scrollRect.height, scrollRect.x, scrollRect.y, scrollRect.width, scrollRect.height);
 			}
 
 			if (!renderer.__allowSmoothing || !bitmap.smoothing)

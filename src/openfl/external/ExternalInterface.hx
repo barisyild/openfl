@@ -87,7 +87,7 @@ import openfl.utils._internal.Lib;
 		the HTML has finished loading before you attempt to call any JavaScript
 		methods.
 	**/
-	public static var available(default, null) = #if (js && html5) true #else false #end;
+	public static var available(default, null) = #if ((js && html5) || wasmjs) true #else false #end;
 
 	/**
 		Indicates whether the external interface should attempt to pass
@@ -166,6 +166,8 @@ import openfl.utils._internal.Lib;
 		{
 			untyped Lib.application.window.element[functionName] = closure;
 		}
+		#elseif wasmjs
+		tjs.External.ExternalBridge.addCallback(functionName, closure);
 		#end
 	}
 
@@ -238,7 +240,9 @@ import openfl.utils._internal.Lib;
 	**/
 	public static function call(functionName:String, p1:Dynamic = null, p2:Dynamic = null, p3:Dynamic = null, p4:Dynamic = null, p5:Dynamic = null):Dynamic
 	{
-		#if (js && html5)
+		#if wasmjs
+		return tjs.External.ExternalBridge.call(functionName, p1, p2, p3, p4, p5);
+		#elseif (js && html5)
 		var callResponse:Dynamic = null;
 
 		if (!~/^\(.+\)$/.match(functionName))

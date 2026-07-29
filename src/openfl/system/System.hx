@@ -216,6 +216,9 @@ import hl.Gc;
 		return Gc.run(true);
 		#elseif hl
 		return Gc.major();
+		#elseif java
+		trace("GC from System");
+		return java.lang.System.gc();
 		#end
 	}
 

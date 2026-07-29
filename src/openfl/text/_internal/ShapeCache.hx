@@ -12,7 +12,7 @@ import haxe.ds.StringMap;
 @SuppressWarnings("checkstyle:FieldDocComment")
 class ShapeCache
 {
-	private var __shortWordMap:StringMap<StringMap< #if (html5 && js) Array<Float> #else Array<GlyphPosition> #end>>;
+	private var __shortWordMap:StringMap<StringMap< #if ((html5 && js) || (wasmjs)) Array<Float> #else Array<GlyphPosition> #end>>;
 	private var __longWordMap:StringMap<IntMap<CacheMeasurement>>;
 
 	public function new()
@@ -34,11 +34,11 @@ class ShapeCache
 	}
 
 	public function cache(formatRange:TextFormatRange,
-			getPositions:#if (js && html5) Void->Array<Float>,
-		wordKey:String = null #else TextLayout #end):#if (js && html5) Array<Float> #else Array<GlyphPosition> #end
+			getPositions:#if ((js && html5) || (wasmjs)) Void->Array<Float>,
+		wordKey:String = null #else TextLayout #end):#if ((js && html5) || (wasmjs)) Array<Float> #else Array<GlyphPosition> #end
 	{
 		var formatKey:String = formatRange.format.__cacheKey;
-		#if (!(js && html5))
+		#if (!((js && html5) || (wasmjs)))
 		var wordKey:String = getPositions.text;
 		#end
 		if (wordKey.length > 15)
@@ -51,7 +51,7 @@ class ShapeCache
 		}
 	}
 
-	private function __cacheShortWord(wordKey:String, formatKey:String, getPositions:#if (js && html5) Void->
+	private function __cacheShortWord(wordKey:String, formatKey:String, getPositions:#if ((js && html5) || (wasmjs)) Void->
 		Array<Float>):Array<Float> #else TextLayout):Array<GlyphPosition> #end
 		{
 			if
@@ -68,26 +68,26 @@ class ShapeCache
 			else
 				{
 					formatMap.set
-					(wordKey, #if (js && html5) getPositions() #else getPositions.positions #end);
+					(wordKey, #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end);
 				}
 			}
 		else
 			{
 				var formatMap = new StringMap();
 				formatMap.set
-				(wordKey, #if (js && html5) getPositions() #else getPositions.positions #end);
+				(wordKey, #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end);
 				__shortWordMap.set
 				(formatKey, formatMap);
 			}
 			return
-			#if (js && html5)
+			#if ((js && html5) || (wasmjs))
 			getPositions()
 			#else
 			cast getPositions.positions
 			#end
 			;
 		}
-		private function __cacheLongWord(wordKey : String, formatKey : String, getPositions : #if (js && html5) Void->
+		private function __cacheLongWord(wordKey : String, formatKey : String, getPositions : #if ((js && html5) || (wasmjs)) Void->
 			Array<Float>):Array<Float> #else TextLayout):Array<GlyphPosition> #end
 			{
 				var hash = hashFunction(wordKey);
@@ -103,24 +103,24 @@ class ShapeCache
 						}
 						else
 						{
-							measurement.set(wordKey, #if (js && html5) getPositions() #else getPositions.positions #end);
+							measurement.set(wordKey, #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end);
 						}
 					}
 					else
 					{
-						var measurement = new CacheMeasurement(wordKey, #if (js && html5) getPositions() #else getPositions.positions #end);
+						var measurement = new CacheMeasurement(wordKey, #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end);
 						formatMap.set(hash, measurement);
 					}
 				}
 				else
 				{
 					var formatMap = new IntMap();
-					var measurement = new CacheMeasurement(wordKey, #if (js && html5) getPositions() #else getPositions.positions #end);
+					var measurement = new CacheMeasurement(wordKey, #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end);
 					measurement.hash = hash;
 					formatMap.set(hash, measurement);
 					__longWordMap.set(formatKey, formatMap);
 				}
-				return #if (js && html5) getPositions() #else getPositions.positions #end;
+				return #if ((js && html5) || (wasmjs)) getPositions() #else getPositions.positions #end;
 			}
 	}
 #end

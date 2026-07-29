@@ -16,7 +16,7 @@ class CanvasShape
 		#if (openfl_legacy_scale9grid && !canvas)
 		legacyScale9Render(shape, renderer);
 		#else
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (!shape.__renderable) return;
 
 		var alpha = renderer.__getAlpha(shape.__worldAlpha);

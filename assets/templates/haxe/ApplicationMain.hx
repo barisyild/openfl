@@ -23,12 +23,33 @@ class ApplicationMain
 		lime.system.System.embed("::APP_FILE::", null, ::WIN_WIDTH::, ::WIN_HEIGHT::);
 		#end
 		#else
+		#if teavm
+		var embedConfig:Dynamic = null;
+		var rootPath = tjs.Callbacks.embedRootPath();
+		var parametersJson = tjs.Callbacks.embedParametersJson();
+		var embedWidth = tjs.Callbacks.embedWidth();
+		var embedHeight = tjs.Callbacks.embedHeight();
+		if (rootPath != "" || parametersJson != "" || embedWidth > 0 || embedHeight > 0)
+		{
+			embedConfig = {};
+			if (rootPath != "") Reflect.setField(embedConfig, "rootPath", rootPath);
+			if (parametersJson != "") Reflect.setField(embedConfig, "parameters", haxe.Json.parse(parametersJson));
+			if (embedWidth > 0) Reflect.setField(embedConfig, "width", embedWidth);
+			if (embedHeight > 0) Reflect.setField(embedConfig, "height", embedHeight);
+		}
+		create(embedConfig);
+		#else
 		create(null);
+		#end
 		#end
 	}
 
 	public static function create(config):Void
 	{
+		#if teavm
+		lime.teavm.LimeReflectBoot.init();
+		#end
+
 		var app = new openfl.display.Application();
 
 		#if !disable_preloader_assets
@@ -139,7 +160,7 @@ class ApplicationMain
 
 		var result = app.exec();
 
-		#if (sys && !ios && !nodejs && !emscripten)
+		#if (sys && !ios && !nodejs && !emscripten && !teavm)
 		lime.system.System.exit(result);
 		#end
 	}

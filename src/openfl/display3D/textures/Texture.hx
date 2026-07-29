@@ -167,6 +167,23 @@ import openfl.utils.ByteArray;
 
 		// TODO: Improve handling of miplevels with canvas src
 
+		#if (wasmjs)
+		if (miplevel == 0 && image.buffer != null)
+		{
+			var __src:wjs._jso.JSObject = cast @:privateAccess image.buffer.__srcImage;
+			if (wjs.Callbacks.jsIsNull(__src) && @:privateAccess image.buffer.__srcCanvas != null) __src = cast @:privateAccess image.buffer.__srcCanvas;
+			if (!wjs.Callbacks.jsIsNull(__src))
+			{
+				var gl = __context.gl;
+
+				__context.__bindGLTexture2D(__textureID);
+				wjs.Callbacks.texImageBitmap(cast gl, __textureTarget, __internalFormat, __format, gl.UNSIGNED_BYTE, __src, image.width, image.height);
+				__context.__bindGLTexture2D(null);
+				return;
+			}
+		}
+		#end
+
 		#if (js && html5)
 		if (miplevel == 0 && image.buffer != null && image.buffer.data == null && image.buffer.src != null)
 		{

@@ -1060,6 +1060,174 @@ abstract Vector<T>(IVector<T>)
 @:noDebug
 #end
 @SuppressWarnings("checkstyle:FieldDocComment")
+#if jvm
+@:dox(hide) private class FloatVector implements IVector<Float>
+{
+	public var fixed:Bool;
+	public var length(get, set):Int;
+
+	@:noCompletion private var __data:haxe.ds.Vector<Float>;
+	@:noCompletion private var __length:Int;
+	@:noCompletion private var __tempIndex:Int;
+
+	@SuppressWarnings("checkstyle:Dynamic")
+	public function new(length:Int = 0, fixed:Bool = false, array:Array<Dynamic> = null, forceCopy:Bool = false):Void
+	{
+		if (array != null)
+		{
+			__length = array.length;
+			__data = new haxe.ds.Vector(__length);
+			for (i in 0...__length) __data.set(i, array[i]);
+		}
+		else
+		{
+			__length = 0;
+			__data = new haxe.ds.Vector(0);
+		}
+		this.fixed = false;
+		if (length > __length) set_length(length);
+		this.fixed = fixed;
+	}
+
+	@:noCompletion private inline function __grow(min:Int):Void
+	{
+		if (min > __data.length)
+		{
+			var n = __data.length < 4 ? 4 : __data.length;
+			while (n < min) n += (n >> 1) + 1;
+			var nd = new haxe.ds.Vector<Float>(n);
+			haxe.ds.Vector.blit(__data, 0, nd, 0, __length);
+			__data = nd;
+		}
+	}
+
+	@:noCompletion private function __toArray():Array<Float>
+	{
+		var a = new Array<Float>();
+		for (i in 0...__length) a[i] = __data.get(i);
+		return a;
+	}
+
+	public function concat(a:IVector<Float> = null):IVector<Float>
+	{
+		var r = __toArray();
+		if (a != null) { var o:FloatVector = cast a; for (i in 0...o.__length) r.push(o.__data.get(i)); }
+		return new FloatVector(0, false, r);
+	}
+
+	public function copy():IVector<Float> return new FloatVector(0, fixed, __toArray());
+
+	public function filter(callback:Float->Bool):IVector<Float> return new FloatVector(0, fixed, __toArray().filter(callback));
+
+	public inline function get(index:Int):Float return (index >= 0 && index < __length) ? __data.get(index) : 0.0;
+
+	public function indexOf(x:Float, from:Int = 0):Int { for (i in from...__length) if (__data.get(i) == x) return i; return -1; }
+
+	public function insertAt(index:Int, element:Float):Void
+	{
+		if (fixed && index >= __length) return;
+		if (index < 0) index = 0; if (index > __length) index = __length;
+		__grow(__length + 1);
+		var i = __length; while (i > index) { __data.set(i, __data.get(i - 1)); i--; }
+		__data.set(index, element); __length++;
+	}
+
+	public function iterator():Iterator<Float> return __toArray().iterator();
+
+	public function join(sep:String = ","):String
+	{
+		var b = new StringBuf();
+		for (i in 0...__length) { if (i > 0) b.add(sep); b.add(__data.get(i)); }
+		return b.toString();
+	}
+
+	public function lastIndexOf(x:Float, from:Null<Int> = null):Int
+	{
+		var i = (from == null || from >= __length) ? __length - 1 : from;
+		while (i >= 0) { if (__data.get(i) == x) return i; i--; }
+		return -1;
+	}
+
+	public function pop():Null<Float> { if (fixed || __length == 0) return null; return __data.get(--__length); }
+
+	public function push(x:Float):Int { if (fixed) return __length; __grow(__length + 1); __data.set(__length++, x); return __length; }
+
+	public function removeAt(index:Int):Float
+	{
+		if ((fixed && index >= __length) || index < 0 || index >= __length) return 0.0;
+		var v = __data.get(index);
+		var i = index; while (i < __length - 1) { __data.set(i, __data.get(i + 1)); i++; }
+		__length--; return v;
+	}
+
+	public function reverse():IVector<Float>
+	{
+		var i = 0, j = __length - 1;
+		while (i < j) { var t = __data.get(i); __data.set(i, __data.get(j)); __data.set(j, t); i++; j--; }
+		return this;
+	}
+
+	public inline function set(index:Int, value:Float):Float
+	{
+		if (fixed && index >= __length) return value;
+		if (index < 0) return value;
+		__grow(index + 1);
+		if (index >= __length) { for (i in __length...index) __data.set(i, 0.0); __length = index + 1; }
+		__data.set(index, value); return value;
+	}
+
+	public function shift():Null<Float>
+	{
+		if (fixed || __length == 0) return null;
+		var v = __data.get(0);
+		var i = 0; while (i < __length - 1) { __data.set(i, __data.get(i + 1)); i++; }
+		__length--; return v;
+	}
+
+	public function slice(startIndex:Int = 0, endIndex:Null<Int> = null):IVector<Float>
+	{
+		if (endIndex == null || endIndex > __length) endIndex = __length; if (startIndex < 0) startIndex = 0;
+		var r = new Array<Float>(); var i = startIndex; while (i < endIndex) { r.push(__data.get(i)); i++; }
+		return new FloatVector(0, false, r);
+	}
+
+	public function sort(f:Float->Float->Int):Void { var a = __toArray(); a.sort(f); for (i in 0...__length) __data.set(i, a[i]); }
+
+	public function splice(pos:Int, len:Int):IVector<Float>
+	{
+		if (pos < 0) pos = __length + pos; if (pos < 0) pos = 0; if (pos > __length) pos = __length;
+		if (len < 0) len = 0; if (pos + len > __length) len = __length - pos;
+		var removed = new Array<Float>(); for (i in 0...len) removed.push(__data.get(pos + i));
+		var i = pos; while (i < __length - len) { __data.set(i, __data.get(i + len)); i++; } __length -= len;
+		return new FloatVector(0, false, removed);
+	}
+
+	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion @:keep private function toJSON():Dynamic return __toArray();
+
+	public function toString():String return __toArray().toString();
+
+	public function unshift(x:Float):Void
+	{
+		if (fixed) return;
+		__grow(__length + 1);
+		var i = __length; while (i > 0) { __data.set(i, __data.get(i - 1)); i--; }
+		__data.set(0, x); __length++;
+	}
+
+	@:noCompletion private function get_length():Int return __length;
+
+	@:noCompletion private function set_length(value:Int):Int
+	{
+		if (!fixed)
+		{
+			if (value < 0) value = 0;
+			if (value > __length) { __grow(value); for (i in __length...value) __data.set(i, 0.0); }
+			__length = value;
+		}
+		return __length;
+	}
+}
+#else
 @:dox(hide) private class FloatVector implements IVector<Float>
 {
 	public var fixed:Bool;
@@ -1313,6 +1481,7 @@ abstract Vector<T>(IVector<T>)
 		return __array.length;
 	}
 }
+#end
 
 #if !cs
 #if !openfl_debug
@@ -1570,6 +1739,173 @@ abstract Vector<T>(IVector<T>)
 @:noDebug
 #end
 @SuppressWarnings("checkstyle:FieldDocComment")
+#if jvm
+@:dox(hide) private class IntVector implements IVector<Int>
+{
+	public var fixed:Bool;
+	public var length(get, set):Int;
+
+	@:noCompletion private var __data:haxe.ds.Vector<Int>;
+	@:noCompletion private var __length:Int;
+	@:noCompletion private var __tempIndex:Int;
+
+	public function new(length:Int = 0, fixed:Bool = false, array:Array<Int> = null):Void
+	{
+		if (array != null)
+		{
+			__length = array.length;
+			__data = new haxe.ds.Vector(__length);
+			for (i in 0...__length) __data.set(i, array[i]);
+		}
+		else
+		{
+			__length = 0;
+			__data = new haxe.ds.Vector(0);
+		}
+		this.fixed = false;
+		if (length > __length) set_length(length);
+		this.fixed = fixed;
+	}
+
+	@:noCompletion private inline function __grow(min:Int):Void
+	{
+		if (min > __data.length)
+		{
+			var n = __data.length < 4 ? 4 : __data.length;
+			while (n < min) n += (n >> 1) + 1;
+			var nd = new haxe.ds.Vector<Int>(n);
+			haxe.ds.Vector.blit(__data, 0, nd, 0, __length);
+			__data = nd;
+		}
+	}
+
+	@:noCompletion private function __toArray():Array<Int>
+	{
+		var a = new Array<Int>();
+		for (i in 0...__length) a[i] = __data.get(i);
+		return a;
+	}
+
+	public function concat(a:IVector<Int> = null):IVector<Int>
+	{
+		var r = __toArray();
+		if (a != null) { var o:IntVector = cast a; for (i in 0...o.__length) r.push(o.__data.get(i)); }
+		return new IntVector(0, false, r);
+	}
+
+	public function copy():IVector<Int> return new IntVector(0, fixed, __toArray());
+
+	public function filter(callback:Int->Bool):IVector<Int> return new IntVector(0, fixed, __toArray().filter(callback));
+
+	public inline function get(index:Int):Int return (index >= 0 && index < __length) ? __data.get(index) : 0;
+
+	public function indexOf(x:Int, from:Int = 0):Int { for (i in from...__length) if (__data.get(i) == x) return i; return -1; }
+
+	public function insertAt(index:Int, element:Int):Void
+	{
+		if (fixed && index >= __length) return;
+		if (index < 0) index = 0; if (index > __length) index = __length;
+		__grow(__length + 1);
+		var i = __length; while (i > index) { __data.set(i, __data.get(i - 1)); i--; }
+		__data.set(index, element); __length++;
+	}
+
+	public function iterator():Iterator<Int> return __toArray().iterator();
+
+	public function join(sep:String = ","):String
+	{
+		var b = new StringBuf();
+		for (i in 0...__length) { if (i > 0) b.add(sep); b.add(__data.get(i)); }
+		return b.toString();
+	}
+
+	public function lastIndexOf(x:Int, from:Null<Int> = null):Int
+	{
+		var i = (from == null || from >= __length) ? __length - 1 : from;
+		while (i >= 0) { if (__data.get(i) == x) return i; i--; }
+		return -1;
+	}
+
+	public function pop():Null<Int> { if (fixed || __length == 0) return null; return __data.get(--__length); }
+
+	public function push(x:Int):Int { if (fixed) return __length; __grow(__length + 1); __data.set(__length++, x); return __length; }
+
+	public function removeAt(index:Int):Int
+	{
+		if ((fixed && index >= __length) || index < 0 || index >= __length) return 0;
+		var v = __data.get(index);
+		var i = index; while (i < __length - 1) { __data.set(i, __data.get(i + 1)); i++; }
+		__length--; return v;
+	}
+
+	public function reverse():IVector<Int>
+	{
+		var i = 0, j = __length - 1;
+		while (i < j) { var t = __data.get(i); __data.set(i, __data.get(j)); __data.set(j, t); i++; j--; }
+		return this;
+	}
+
+	public inline function set(index:Int, value:Int):Int
+	{
+		if (fixed && index >= __length) return value;
+		if (index < 0) return value;
+		__grow(index + 1);
+		if (index >= __length) { for (i in __length...index) __data.set(i, 0); __length = index + 1; }
+		__data.set(index, value); return value;
+	}
+
+	public function shift():Null<Int>
+	{
+		if (fixed || __length == 0) return null;
+		var v = __data.get(0);
+		var i = 0; while (i < __length - 1) { __data.set(i, __data.get(i + 1)); i++; }
+		__length--; return v;
+	}
+
+	public function slice(startIndex:Int = 0, endIndex:Null<Int> = null):IVector<Int>
+	{
+		if (endIndex == null || endIndex > __length) endIndex = __length; if (startIndex < 0) startIndex = 0;
+		var r = new Array<Int>(); var i = startIndex; while (i < endIndex) { r.push(__data.get(i)); i++; }
+		return new IntVector(0, false, r);
+	}
+
+	public function sort(f:Int->Int->Int):Void { var a = __toArray(); a.sort(f); for (i in 0...__length) __data.set(i, a[i]); }
+
+	public function splice(pos:Int, len:Int):IVector<Int>
+	{
+		if (pos < 0) pos = __length + pos; if (pos < 0) pos = 0; if (pos > __length) pos = __length;
+		if (len < 0) len = 0; if (pos + len > __length) len = __length - pos;
+		var removed = new Array<Int>(); for (i in 0...len) removed.push(__data.get(pos + i));
+		var i = pos; while (i < __length - len) { __data.set(i, __data.get(i + len)); i++; } __length -= len;
+		return new IntVector(0, false, removed);
+	}
+
+	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion @:keep private function toJSON():Dynamic return __toArray();
+
+	public function toString():String return __toArray().toString();
+
+	public function unshift(x:Int):Void
+	{
+		if (fixed) return;
+		__grow(__length + 1);
+		var i = __length; while (i > 0) { __data.set(i, __data.get(i - 1)); i--; }
+		__data.set(0, x); __length++;
+	}
+
+	@:noCompletion private function get_length():Int return __length;
+
+	@:noCompletion private function set_length(value:Int):Int
+	{
+		if (!fixed)
+		{
+			if (value < 0) value = 0;
+			if (value > __length) { __grow(value); for (i in __length...value) __data.set(i, 0); }
+			__length = value;
+		}
+		return __length;
+	}
+}
+#else
 @:dox(hide) private class IntVector implements IVector<Int>
 {
 	public var fixed:Bool;
@@ -1806,6 +2142,7 @@ abstract Vector<T>(IVector<T>)
 		return __array.length;
 	}
 }
+#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')

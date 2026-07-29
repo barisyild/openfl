@@ -14,7 +14,7 @@ class CanvasDisplayObject
 {
 	public static inline function render(displayObject:DisplayObject, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (displayObject.opaqueBackground == null && displayObject.__graphics == null) return;
 		if (!displayObject.__renderable) return;
 

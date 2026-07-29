@@ -19,7 +19,7 @@ class Context3DTextField
 	{
 		renderer.__softwareRenderer.__pixelRatio = renderer.__pixelRatio;
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		CanvasTextField.render(textField, cast renderer.__softwareRenderer, textField.__worldTransform);
 		#elseif lime_cairo
 		CairoTextField.render(textField, cast renderer.__softwareRenderer, textField.__worldTransform);
@@ -52,7 +52,7 @@ class Context3DTextField
 
 	public static function renderMask(textField:TextField, renderer:OpenGLRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		CanvasTextField.render(textField, cast renderer.__softwareRenderer, textField.__worldTransform);
 		#elseif lime_cairo
 		CairoTextField.render(textField, cast renderer.__softwareRenderer, textField.__worldTransform);

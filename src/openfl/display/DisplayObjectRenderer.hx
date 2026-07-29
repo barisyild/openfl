@@ -277,7 +277,7 @@ class DisplayObjectRenderer extends EventDispatcher
 				{
 					if (#if !openfl_disable_gl_cacheasbitmap __shouldCacheHardware(displayObject, null) == false #else true #end)
 					{
-						#if (js && html5)
+						#if ((js && html5) || (wasmjs))
 						renderType = CANVAS;
 						#else
 						renderType = CAIRO;
@@ -530,7 +530,7 @@ class DisplayObjectRenderer extends EventDispatcher
 							displayObject.__cacheBitmap.__bitmapData = displayObject.__cacheBitmapData;
 						}
 
-						#if (js && html5)
+						#if ((js && html5) || (wasmjs))
 						ImageCanvasUtil.convertToCanvas(displayObject.__cacheBitmapData.image);
 						displayObject.__cacheBitmapRenderer = new CanvasRenderer(displayObject.__cacheBitmapData.image.buffer.__srcContext);
 						#else
@@ -715,7 +715,7 @@ class DisplayObjectRenderer extends EventDispatcher
 				}
 				else
 				{
-					#if (js && html5)
+					#if ((js && html5) || (wasmjs))
 					displayObject.__cacheBitmapData.__drawCanvas(displayObject, cast displayObject.__cacheBitmapRenderer);
 					#else
 					displayObject.__cacheBitmapData.__drawCairo(displayObject, cast displayObject.__cacheBitmapRenderer);

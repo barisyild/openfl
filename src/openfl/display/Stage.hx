@@ -1133,6 +1133,8 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 		__macKeyboard = true;
 		#elseif (js && html5)
 		__macKeyboard = untyped #if haxe4 js.Syntax.code #else __js__ #end ("/AppleWebKit/.test (navigator.userAgent) && /Mobile\\/\\w+/.test (navigator.userAgent) || /Mac/.test (navigator.platform)");
+		#elseif wasmjs
+		__macKeyboard = wjs.Callbacks.userAgent().indexOf("Mac") > -1;
 		#end
 
 		__clearBeforeRender = true;

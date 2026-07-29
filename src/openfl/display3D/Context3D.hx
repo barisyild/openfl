@@ -321,6 +321,24 @@ import lime.math.Vector2;
 
 		if (__glMaxTextureMaxAnisotropy == -1)
 		{
+			#if (wasmjs)
+			var extensionObj:wjs._jso.JSObject = gl.getExtensionObject("EXT_texture_filter_anisotropic");
+			if (extensionObj == null || !wjs.Callbacks.hasField(extensionObj, "MAX_TEXTURE_MAX_ANISOTROPY_EXT"))
+				extensionObj = gl.getExtensionObject("MOZ_EXT_texture_filter_anisotropic");
+			if (extensionObj == null || !wjs.Callbacks.hasField(extensionObj, "MAX_TEXTURE_MAX_ANISOTROPY_EXT"))
+				extensionObj = gl.getExtensionObject("WEBKIT_EXT_texture_filter_anisotropic");
+
+			if (extensionObj != null)
+			{
+				__glTextureMaxAnisotropy = wjs.Callbacks.getIntField(extensionObj, "TEXTURE_MAX_ANISOTROPY_EXT");
+				__glMaxTextureMaxAnisotropy = gl.getParameter(wjs.Callbacks.getIntField(extensionObj, "MAX_TEXTURE_MAX_ANISOTROPY_EXT"));
+			}
+			else
+			{
+				__glTextureMaxAnisotropy = 0;
+				__glMaxTextureMaxAnisotropy = 0;
+			}
+			#else
 			var extension:Dynamic = gl.getExtension("EXT_texture_filter_anisotropic");
 
 			#if (js && html5)
@@ -340,12 +358,15 @@ import lime.math.Vector2;
 				__glTextureMaxAnisotropy = 0;
 				__glMaxTextureMaxAnisotropy = 0;
 			}
+			#end
 		}
 
 		#if lime
 		if (__glDepthStencil == -1)
 		{
 			#if (js && html5)
+			__glDepthStencil = gl.DEPTH_STENCIL;
+			#elseif (wasmjs)
 			__glDepthStencil = gl.DEPTH_STENCIL;
 			#else
 			if (__context.type == OPENGLES && Std.parseFloat(__context.version) >= 3)
@@ -377,12 +398,21 @@ import lime.math.Vector2;
 
 		if (__glMemoryTotalAvailable == -1)
 		{
+			#if (wasmjs)
+			var extensionObj:wjs._jso.JSObject = gl.getExtensionObject("NVX_gpu_memory_info");
+			if (extensionObj != null)
+			{
+				__glMemoryTotalAvailable = wjs.Callbacks.getIntField(extensionObj, "GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX");
+				__glMemoryCurrentAvailable = wjs.Callbacks.getIntField(extensionObj, "GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX");
+			}
+			#else
 			var extension = gl.getExtension("NVX_gpu_memory_info");
 			if (extension != null)
 			{
 				__glMemoryTotalAvailable = extension.GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX;
 				__glMemoryCurrentAvailable = extension.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX;
 			}
+			#end
 		}
 		#end
 
@@ -2734,8 +2764,8 @@ import lime.math.Vector2;
 		if (__glMemoryCurrentAvailable != -1)
 		{
 			// TODO: Return amount used by this application only
-			var current = gl.getParameter(__glMemoryCurrentAvailable);
-			var total = gl.getParameter(__glMemoryTotalAvailable);
+			var current:Int = gl.getParameter(__glMemoryCurrentAvailable);
+			var total:Int = gl.getParameter(__glMemoryTotalAvailable);
 
 			if (total > 0)
 			{

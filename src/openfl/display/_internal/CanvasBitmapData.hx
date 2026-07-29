@@ -6,11 +6,12 @@ import lime._internal.graphics.ImageCanvasUtil; // TODO
 
 #end
 @:access(openfl.display.BitmapData)
+@:access(lime.graphics.ImageBuffer)
 class CanvasBitmapData
 {
 	public static function renderDrawable(bitmapData:BitmapData, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (!bitmapData.readable) return;
 
 		var image = bitmapData.image;
@@ -27,7 +28,7 @@ class CanvasBitmapData
 
 		renderer.setTransform(bitmapData.__renderTransform, context);
 
-		context.drawImage(image.src, 0, 0, image.width, image.height);
+		context.drawImage(#if (js && html5) image.src #else image.buffer.__srcCanvas #end, 0, 0, image.width, image.height);
 		#end
 	}
 

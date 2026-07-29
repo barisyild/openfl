@@ -45,7 +45,7 @@ package openfl.utils;
 @:noDebug
 #end
 @:allow(lime.app.Future)
-#if (!hl && !js)
+#if (!hl && !js && !jvm)
 @:generic
 #end
 class Promise<T>

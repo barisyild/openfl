@@ -53,7 +53,7 @@ import openfl.display3D.Context3D;
 #if !openfl_debug
 @:fileXml('tags="haxe,release"') @:noDebug
 #end
-#if (!js && !display)
+#if (!js && !display && !jvm)
 @:generic
 #end
 @:final class ShaderInput<T> /*implements Dynamic*/

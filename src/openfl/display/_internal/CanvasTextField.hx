@@ -13,6 +13,9 @@ import openfl.text.TextFieldType;
 #if (js && html5)
 import js.html.CanvasRenderingContext2D;
 import js.Browser;
+#elseif (wasmjs)
+import wjs.html.CanvasRenderingContext2D;
+import wjs.Browser;
 #end
 
 @:access(openfl.text._internal.TextEngine)
@@ -24,14 +27,14 @@ import js.Browser;
 @SuppressWarnings("checkstyle:FieldDocComment")
 class CanvasTextField
 {
-	#if (js && html5)
+	#if ((js && html5) || (wasmjs))
 	private static var context:CanvasRenderingContext2D;
 	private static var clearRect:Null<Bool>;
 	#end
 
 	public static inline function render(textField:TextField, renderer:CanvasRenderer, transform:Matrix):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		var textEngine = textField.__textEngine;
 		// textBounds maximizes rendering efficiency by clipping the rectangle to a minimal size containing only the text. Measurements
 		// will always be smaller than bounds.
@@ -129,8 +132,13 @@ class CanvasTextField
 			{
 				if (textField.__graphics.__canvas == null)
 				{
+					#if (wasmjs)
+					textField.__graphics.__canvas = wjs.Callbacks.createCanvas();
+					textField.__graphics.__context = wjs.Callbacks.getContext2D(cast textField.__graphics.__canvas);
+					#else
 					textField.__graphics.__canvas = cast Browser.document.createElement("canvas");
 					textField.__graphics.__context = textField.__graphics.__canvas.getContext("2d");
+					#end
 				}
 
 				context = graphics.__context;
@@ -154,7 +162,11 @@ class CanvasTextField
 
 				if (clearRect == null)
 				{
+					#if (wasmjs)
+					clearRect = false;
+					#else
 					clearRect = untyped #if haxe4 js.Syntax.code #else __js__ #end ("(typeof navigator !== 'undefined' && typeof navigator['isCocoonJS'] !== 'undefined')");
+					#end
 				}
 
 				if (clearRect)
@@ -430,6 +442,7 @@ class CanvasTextField
 
 	public static function renderDrawable(textField:TextField, renderer:CanvasRenderer):Void
 	{
+		#if ((js && html5) || (wasmjs))
 		#if (js && html5)
 		// TODO: Better DOM workaround on cacheAsBitmap
 
@@ -452,6 +465,7 @@ class CanvasTextField
 			textField.__layoutDirty = true;
 			textField.__setRenderDirty();
 		}
+		#end
 
 		if (textField.mask == null || (textField.mask.width > 0 && textField.mask.height > 0))
 		{

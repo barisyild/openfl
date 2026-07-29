@@ -155,4 +155,19 @@
 
 	<include haxelib="openfl-samples" if="create" />
 
+	<section if="jvm">
+		<reflection pattern="openfl.geom.Transform" />
+		<reflection pattern="openfl.geom.ColorTransform" />
+		<reflection pattern="openfl.display.DisplayObject" />
+		<reflection pattern="openfl.display.Sprite" />
+		<reflection pattern="openfl.display.MovieClip" />
+		<reflection pattern="openfl.display.DisplayObjectShader" />
+		<reflection pattern="openfl.display.BitmapData" />
+		<reflection pattern="openfl.display._internal.Context3DMaskShader" />
+		<reflection pattern="openfl.Vector" mode="dynamic" />
+		<reflection pattern="openfl.display.ShaderParameter" mode="dynamic" />
+		<reflection extends="openfl.filters.BitmapFilter" />
+		<reflection extends="openfl.display.Shader" />
+	</section>
+
 </extension>

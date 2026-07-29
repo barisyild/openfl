@@ -20,7 +20,7 @@ class TextLayoutGroup
 	public var lineIndex:Int;
 	public var offsetX:Float;
 	public var offsetY:Float;
-	#if (js && html5)
+	#if ((js && html5) || (wasmjs))
 	public var positions:Array<Float>; // TODO: Make consistent with native?
 	#else
 	public var positions:Array<GlyphPosition>;
@@ -37,7 +37,7 @@ class TextLayoutGroup
 
 	public inline function getAdvance(index:Int):Float
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		return positions[index];
 		#else
 		return (index >= 0 && index < positions.length) ? positions[index].advance.x : 0;

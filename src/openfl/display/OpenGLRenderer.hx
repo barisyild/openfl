@@ -140,7 +140,7 @@ class OpenGLRenderer extends DisplayObjectRenderer
 		}
 		#end
 
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		__softwareRenderer = new CanvasRenderer(null);
 		#else
 		__softwareRenderer = new CairoRenderer(null);

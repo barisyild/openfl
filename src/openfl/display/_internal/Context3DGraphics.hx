@@ -647,7 +647,7 @@ class Context3DGraphics
 				renderer.__softwareRenderer.__worldTransform = renderer.__worldTransform;
 			}
 
-			#if (js && html5)
+			#if ((js && html5) || (wasmjs))
 			CanvasGraphics.render(graphics, cast renderer.__softwareRenderer);
 			#elseif lime_cairo
 			CairoGraphics.render(graphics, cast renderer.__softwareRenderer);

@@ -14,7 +14,7 @@ import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import openfl.Vector;
-#if lime
+#if (lime && !(wasmjs))
 import lime._internal.graphics.ImageCanvasUtil; // TODO
 #end
 #if (js && html5)
@@ -26,6 +26,15 @@ import js.html.CanvasWindingRule;
 import js.Browser;
 import js.html.DOMMatrix;
 import js.html.Path2D;
+#elseif (wasmjs)
+import wjs.html.CanvasElement;
+import wjs.html.CanvasGradient;
+import wjs.html.CanvasPattern;
+import wjs.html.CanvasRenderingContext2D;
+import wjs.html.CanvasWindingRule;
+import wjs.Browser;
+import wjs.html.DOMMatrix;
+import wjs.html.Path2D;
 #end
 
 @:access(openfl.display.DisplayObject)
@@ -52,29 +61,34 @@ class CanvasGraphics
 	private static var inversePendingMatrix:Matrix;
 	private static var pendingMatrix:Matrix;
 	private static var strokeCommands:DrawCommandBuffer = new DrawCommandBuffer();
-	private static var strokePattern:#if (js && html5) CanvasPattern #else Dynamic #end;
+	private static var strokePattern:#if ((js && html5) || (wasmjs)) CanvasPattern #else Dynamic #end;
 	private static var bitmapStroke:BitmapData;
 	private static var bitmapStrokeMatrix:Matrix;
 	private static var strokeScale9Bounds:Scale9GridBounds;
-	@SuppressWarnings("checkstyle:Dynamic") private static var windingRule:#if (js && html5) CanvasWindingRule #else Dynamic #end;
+	@SuppressWarnings("checkstyle:Dynamic") private static var windingRule:#if ((js && html5) || (wasmjs)) CanvasWindingRule #else Dynamic #end;
 	private static var worldAlpha:Float;
-	#if (js && html5)
+	#if ((js && html5) || (wasmjs))
 	private static var context:CanvasRenderingContext2D;
 	private static var hitTestCanvas:CanvasElement;
 	private static var hitTestContext:CanvasRenderingContext2D;
 	#end
 
-	#if (js && html5)
+	#if ((js && html5) || (wasmjs))
 	private static function __init__():Void
 	{
+		#if (wasmjs)
+		hitTestCanvas = wjs.Callbacks.createCanvas();
+		hitTestContext = wjs.Callbacks.getContext2D(cast hitTestCanvas);
+		#else
 		hitTestCanvas = Browser.supported ? cast Browser.document.createElement("canvas") : null;
 		hitTestContext = Browser.supported ? hitTestCanvas.getContext("2d") : null;
+		#end
 	}
 	#end
 
 	private static function closePath(strokeBefore:Bool = false):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (context.strokeStyle == null)
 		{
 			return;
@@ -136,15 +150,20 @@ class CanvasGraphics
 	}
 
 	@SuppressWarnings("checkstyle:Dynamic")
-	private static function createBitmapFill(bitmap:BitmapData, bitmapRepeat:Bool, smooth:Bool):#if (js && html5) CanvasPattern #else Dynamic #end
+	private static function createBitmapFill(bitmap:BitmapData, bitmapRepeat:Bool, smooth:Bool):#if ((js && html5) || (wasmjs)) CanvasPattern #else Dynamic #end
 	{
-		#if (js && html5)
-		ImageCanvasUtil.convertToCanvas(bitmap.image);
+		#if ((js && html5) || (wasmjs))
 		setSmoothing(smooth);
 		// flash extends the pixels on the edges to fill any remaining space,
 		// but context.createPattern doesn't have that as a repetition option,
 		// unlike cairo.
+		#if (wasmjs)
+		var imageSource = wjs.GLData.patternSource(bitmap.image);
+		return context.createPattern(cast imageSource, bitmapRepeat ? "repeat" : "no-repeat");
+		#else
+		ImageCanvasUtil.convertToCanvas(bitmap.image);
 		return context.createPattern(bitmap.image.src, bitmapRepeat ? "repeat" : "no-repeat");
+		#end
 		#else
 		return null;
 		#end
@@ -152,9 +171,9 @@ class CanvasGraphics
 
 	@SuppressWarnings("checkstyle:Dynamic")
 	private static function createGradientPattern(type:GradientType, colors:Array<Int>, alphas:Array<Float>, ratios:Array<Int>, matrix:Matrix,
-			spreadMethod:SpreadMethod, interpolationMethod:InterpolationMethod, focalPointRatio:Float):#if (js && html5) CanvasPattern #else Void #end
+			spreadMethod:SpreadMethod, interpolationMethod:InterpolationMethod, focalPointRatio:Float):#if ((js && html5) || (wasmjs)) CanvasPattern #else Void #end
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		var gradientFill:CanvasGradient = null,
 			point:Point = null,
 			point2:Point = null,
@@ -289,8 +308,13 @@ class CanvasGraphics
 
 				var gradientScale:Float = spreadMethod == PAD ? 1.0 : 25.0;
 				var dx = 0.5 * (gradientScale - 1.0) * 1638.4;
+				#if (wasmjs)
+				var canvas:CanvasElement = wjs.Callbacks.createCanvas();
+				var context2:CanvasRenderingContext2D = wjs.Callbacks.getContext2D(cast canvas);
+				#else
 				var canvas:CanvasElement = cast Browser.document.createElement("canvas");
 				var context2 = canvas.getContext("2d");
+				#end
 
 				var dimensions:Dynamic = getDimensions(matrix);
 
@@ -361,6 +385,19 @@ class CanvasGraphics
 				inversePendingMatrix = pendingMatrix.clone();
 				inversePendingMatrix.invert();
 
+				#if (wasmjs)
+				var path:Path2D = new Path2D();
+				path.rect(0, 0, canvas.width, canvas.height);
+				path.closePath();
+				var gradientMatrix:DOMMatrix = new DOMMatrix([matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty]);
+				var inverseMatrix:DOMMatrix = gradientMatrix.inverse();
+				var untransformedPath:Path2D = new Path2D();
+				untransformedPath.addPath(path, inverseMatrix);
+				context2.setFillStyleGradient(gradientFill);
+				context2.setTransform(gradientMatrix.a, gradientMatrix.b, gradientMatrix.c, gradientMatrix.d, gradientMatrix.e, gradientMatrix.f);
+				wjs.Callbacks.canvasFillPath(cast context2, cast untransformedPath);
+				return context.createPattern(canvas, 'no-repeat');
+				#else
 				var path:Path2D = cast new Path2D();
 				path.rect(0, 0, canvas.width, canvas.height);
 				path.closePath();
@@ -372,6 +409,7 @@ class CanvasGraphics
 				context2.setTransform(gradientMatrix.a, gradientMatrix.b, gradientMatrix.c, gradientMatrix.d, gradientMatrix.e, gradientMatrix.f);
 				context2.fill(untransformedPath);
 				return cast context.createPattern(canvas, 'no-repeat');
+				#end
 		}
 
 		if (point != null) Point.__pool.release(point);
@@ -409,11 +447,29 @@ class CanvasGraphics
 		};
 	}
 
-	private static function createTempPatternCanvas(bitmap:BitmapData, repeat:Bool, width:Int, height:Int):#if (js && html5) CanvasElement #else Void #end
+	private static function createTempPatternCanvas(bitmap:BitmapData, repeat:Bool, width:Int, height:Int):#if ((js && html5) || (wasmjs)) CanvasElement #else Void #end
 	{
 		// TODO: Don't create extra canvas elements like this
 
-		#if (js && html5)
+		#if (wasmjs)
+		var canvas:CanvasElement = wjs.Callbacks.createCanvas();
+		var context:CanvasRenderingContext2D = wjs.Callbacks.getContext2D(cast canvas);
+
+		canvas.width = width;
+		canvas.height = height;
+
+		var imageSource = wjs.GLData.patternSource(bitmap.image);
+		context.setFillStylePattern(context.createPattern(cast imageSource, repeat ? "repeat" : "no-repeat"));
+		context.beginPath();
+		context.moveTo(0, 0);
+		context.lineTo(0, height);
+		context.lineTo(width, height);
+		context.lineTo(width, 0);
+		context.lineTo(0, 0);
+		context.closePath();
+		if (!hitTesting) context.fill(windingRule);
+		return canvas;
+		#elseif (js && html5)
 		var canvas:CanvasElement = cast Browser.document.createElement("canvas");
 		var context = canvas.getContext("2d");
 
@@ -436,7 +492,7 @@ class CanvasGraphics
 	private static function drawRoundRect(x:Float, y:Float, width:Float, height:Float, ellipseWidth:Float, ellipseHeight:Null<Float>, ?scale9Grid:Rectangle,
 			?scale9UnscaledWidth:Float, ?scale9UnscaledHeight:Float, ?scaleX:Float, ?scaleY:Float):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (ellipseHeight == null) ellipseHeight = ellipseWidth;
 
 		ellipseWidth *= 0.5;
@@ -507,7 +563,7 @@ class CanvasGraphics
 
 	private static function endFill():Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		context.beginPath();
 		playCommands(fillCommands, false);
 		fillCommands.clear();
@@ -516,7 +572,7 @@ class CanvasGraphics
 
 	private static function endStroke():Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		context.beginPath();
 		playCommands(strokeCommands, true);
 		context.closePath();
@@ -610,7 +666,7 @@ class CanvasGraphics
 
 	public static function hitTest(graphics:Graphics, x:Float, y:Float):Bool
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		bounds = graphics.__bounds;
 		CanvasGraphics.graphics = graphics;
 
@@ -681,7 +737,7 @@ class CanvasGraphics
 					case LINE_STYLE:
 						endStroke();
 
-						if (hasStroke && (context : Dynamic).isPointInStroke(x, y))
+						if (hasStroke && #if (wasmjs) context.isPointInStroke(x, y) #else (context : Dynamic).isPointInStroke(x, y) #end)
 						{
 							data.destroy();
 							graphics.__canvas = cacheCanvas;
@@ -717,7 +773,7 @@ class CanvasGraphics
 
 						endStroke();
 
-						if (hasStroke && (context : Dynamic).isPointInStroke(x, y))
+						if (hasStroke && #if (wasmjs) context.isPointInStroke(x, y) #else (context : Dynamic).isPointInStroke(x, y) #end)
 						{
 							data.destroy();
 							graphics.__canvas = cacheCanvas;
@@ -743,7 +799,7 @@ class CanvasGraphics
 
 						endStroke();
 
-						if (hasStroke && (context : Dynamic).isPointInStroke(x, y))
+						if (hasStroke && #if (wasmjs) context.isPointInStroke(x, y) #else (context : Dynamic).isPointInStroke(x, y) #end)
 						{
 							data.destroy();
 							graphics.__canvas = cacheCanvas;
@@ -827,7 +883,7 @@ class CanvasGraphics
 				endStroke();
 			}
 
-			if (hasStroke && (context : Dynamic).isPointInStroke(x, y))
+			if (hasStroke && #if (wasmjs) context.isPointInStroke(x, y) #else (context : Dynamic).isPointInStroke(x, y) #end)
 			{
 				hitTest = true;
 			}
@@ -892,7 +948,7 @@ class CanvasGraphics
 
 	private static function playCommands(commands:DrawCommandBuffer, stroke:Bool = false):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		bounds = graphics.__bounds;
 
 		var offsetX = bounds.x;
@@ -1296,7 +1352,11 @@ class CanvasGraphics
 					context.moveTo(positionX - offsetX, positionY - offsetY);
 					strokePattern = createGradientPattern(c.type, c.colors, c.alphas, c.ratios, c.matrix, c.spreadMethod, c.interpolationMethod,
 						c.focalPointRatio);
+					#if (wasmjs)
+					context.setStrokeStylePattern(strokePattern);
+					#else
 					context.strokeStyle = strokePattern;
+					#end
 
 					setSmoothing(true);
 					hasStroke = true;
@@ -1315,7 +1375,11 @@ class CanvasGraphics
 					if (c.bitmap.readable)
 					{
 						strokePattern = createBitmapFill(c.bitmap, c.repeat, c.smooth);
+						#if (wasmjs)
+						context.setStrokeStylePattern(strokePattern);
+						#else
 						context.strokeStyle = strokePattern;
+						#end
 						bitmapStroke = c.bitmap;
 						bitmapStrokeMatrix = c.matrix;
 					}
@@ -1345,7 +1409,11 @@ class CanvasGraphics
 					var c = data.readBeginBitmapFill();
 					if (c.bitmap.readable)
 					{
+						#if (wasmjs)
+						context.setFillStylePattern(createBitmapFill(c.bitmap, c.repeat, c.smooth));
+						#else
 						context.fillStyle = createBitmapFill(c.bitmap, c.repeat, c.smooth);
+						#end
 						bitmapFill = c.bitmap;
 					}
 					else
@@ -1416,8 +1484,13 @@ class CanvasGraphics
 
 				case BEGIN_GRADIENT_FILL:
 					var c = data.readBeginGradientFill();
+					#if (wasmjs)
+					context.setFillStylePattern(createGradientPattern(c.type, c.colors, c.alphas, c.ratios, c.matrix, c.spreadMethod,
+						c.interpolationMethod, c.focalPointRatio));
+					#else
 					context.fillStyle = createGradientPattern(c.type, c.colors, c.alphas, c.ratios, c.matrix, c.spreadMethod, c.interpolationMethod,
 						c.focalPointRatio);
+					#end
 
 					hasFill = true;
 					bitmapFill = null;
@@ -1437,7 +1510,12 @@ class CanvasGraphics
 						bitmapFill = shaderBuffer.inputs[0];
 						if (bitmapFill.readable)
 						{
+							#if (wasmjs)
+							context.setFillStylePattern(createBitmapFill(bitmapFill, shaderBuffer.inputWrap[0] != CLAMP,
+								shaderBuffer.inputFilter[0] != NEAREST));
+							#else
 							context.fillStyle = createBitmapFill(bitmapFill, shaderBuffer.inputWrap[0] != CLAMP, shaderBuffer.inputFilter[0] != NEAREST);
+							#end
 						}
 						else
 						{
@@ -1986,7 +2064,7 @@ class CanvasGraphics
 
 	public static function render(graphics:Graphics, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		#if (openfl_disable_hdpi || openfl_disable_hdpi_graphics)
 		var pixelRatio = 1;
 		#else
@@ -2036,8 +2114,13 @@ class CanvasGraphics
 			{
 				if (graphics.__canvas == null)
 				{
+					#if (wasmjs)
+					graphics.__canvas = wjs.Callbacks.createCanvas();
+					graphics.__context = wjs.Callbacks.getContext2D(cast graphics.__canvas);
+					#else
 					graphics.__canvas = cast Browser.document.createElement("canvas");
 					graphics.__context = graphics.__canvas.getContext("2d");
+					#end
 				}
 
 				context = graphics.__context;
@@ -2349,13 +2432,17 @@ class CanvasGraphics
 
 	public static function renderMask(graphics:Graphics, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		// TODO: Move to normal render method, browsers appear to support more than
 		// one path in clipping now
 
 		if (graphics.__commands.length != 0)
 		{
+			#if (wasmjs)
+			context = renderer.context;
+			#else
 			context = cast renderer.context;
+			#end
 
 			var positionX = 0.0;
 			var positionY = 0.0;
@@ -2463,7 +2550,7 @@ class CanvasGraphics
 
 	private static function setSmoothing(smooth:Bool):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (!allowSmoothing)
 		{
 			smooth = false;

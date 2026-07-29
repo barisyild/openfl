@@ -440,8 +440,7 @@ class URLLoader extends EventDispatcher
 			data = stringRequest.responseData;
 		}
 		#end
-		#if !hl
-		// can't compare a string against an integer in HashLink
+		#if (!hl && !jvm)
 		if (error == 403)
 		{
 			var event = new SecurityErrorEvent(SecurityErrorEvent.SECURITY_ERROR);
