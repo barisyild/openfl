@@ -229,7 +229,7 @@ abstract Vector<T>(IVector<T>)
 	{
 		for (i in 0...this.length)
 		{
-			@:privateAccess this.__tempIndex = i;
+			#if jvm this.__setTempIndex(i); #else @:privateAccess this.__tempIndex = i; #end
 
 			if (thisObject != null)
 			{
@@ -237,7 +237,7 @@ abstract Vector<T>(IVector<T>)
 			}
 			else if (callback(cast this.get(i), i, cast this) == false) break;
 		}
-		return (@:privateAccess this.__tempIndex == this.length - 1);
+		return (#if jvm this.__getTempIndex() #else @:privateAccess this.__tempIndex #end == this.length - 1);
 	}
 
 	/**
@@ -500,7 +500,7 @@ abstract Vector<T>(IVector<T>)
 	{
 		for (i in 0...this.length)
 		{
-			@:privateAccess this.__tempIndex = i;
+			#if jvm this.__setTempIndex(i); #else @:privateAccess this.__tempIndex = i; #end
 
 			if (thisObject != null)
 			{
@@ -508,9 +508,9 @@ abstract Vector<T>(IVector<T>)
 			}
 			else if (callback(cast this.get(i), i, cast this)) break;
 
-			if (i == this.length - 1) @:privateAccess this.__tempIndex++;
+			#if jvm if (i == this.length - 1) @:privateAccess this.__setTempIndex(@:privateAccess this.__getTempIndex() + 1); #else if (i == this.length - 1) @:privateAccess this.__tempIndex++; #end
 		}
-		return (@:privateAccess this.__tempIndex < this.length - 1);
+		return (#if jvm this.__getTempIndex() #else @:privateAccess this.__tempIndex #end < this.length - 1);
 	}
 
 	/**
@@ -584,14 +584,14 @@ abstract Vector<T>(IVector<T>)
 	public inline function splice(startIndex:Int, deleteCount:Int #if (haxe_ver >= 4.2), ...items #end):Vector<T>
 	{
 		#if (haxe_ver >= 4.2)
-		@:privateAccess this.__tempIndex = startIndex;
+		#if jvm this.__setTempIndex(startIndex); #else @:privateAccess this.__tempIndex = startIndex; #end
 
 		for (item in items)
 		{
-			this.insertAt(@:privateAccess this.__tempIndex, cast item);
-			@:privateAccess this.__tempIndex++;
+			this.insertAt(#if jvm this.__getTempIndex() #else @:privateAccess this.__tempIndex #end, cast item);
+			#if jvm this.__setTempIndex(this.__getTempIndex() + 1); #else @:privateAccess this.__tempIndex++; #end
 		}
-		return cast this.splice(@:privateAccess this.__tempIndex, deleteCount);
+		return cast this.splice(#if jvm this.__getTempIndex() #else @:privateAccess this.__tempIndex #end, deleteCount);
 		#else
 		return cast this.splice(startIndex, deleteCount);
 		#end
@@ -818,6 +818,18 @@ abstract Vector<T>(IVector<T>)
 
 	@:noCompletion private var __array:Array<Bool>;
 	@:noCompletion private var __tempIndex:Int;
+
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
 
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Bool> = null):Void
 	{
@@ -1070,6 +1082,18 @@ abstract Vector<T>(IVector<T>)
 	@:noCompletion private var __length:Int;
 	@:noCompletion private var __tempIndex:Int;
 
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
+
 	@SuppressWarnings("checkstyle:Dynamic")
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Dynamic> = null, forceCopy:Bool = false):Void
 	{
@@ -1235,6 +1259,18 @@ abstract Vector<T>(IVector<T>)
 
 	@:noCompletion private var __array:Array<Float>;
 	@:noCompletion private var __tempIndex:Int;
+
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
 
 	@SuppressWarnings("checkstyle:Dynamic")
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Dynamic> = null, forceCopy:Bool = false):Void
@@ -1497,6 +1533,18 @@ abstract Vector<T>(IVector<T>)
 	@:noCompletion private var __array:Array<Function>;
 	@:noCompletion private var __tempIndex:Int;
 
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
+
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Function> = null):Void
 	{
 		if (array == null) array = new Array();
@@ -1749,6 +1797,18 @@ abstract Vector<T>(IVector<T>)
 	@:noCompletion private var __length:Int;
 	@:noCompletion private var __tempIndex:Int;
 
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
+
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Int> = null):Void
 	{
 		if (array != null)
@@ -1913,6 +1973,18 @@ abstract Vector<T>(IVector<T>)
 
 	@:noCompletion private var __array:Array<Int>;
 	@:noCompletion private var __tempIndex:Int;
+
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
 
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Int> = null):Void
 	{
@@ -2156,6 +2228,18 @@ abstract Vector<T>(IVector<T>)
 
 	@:noCompletion private var __array:Array<T>;
 	@:noCompletion private var __tempIndex:Int;
+
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int
+	{
+		return __tempIndex;
+	}
+
+	@:noCompletion public function __setTempIndex(value:Int):Void
+	{
+		__tempIndex = value;
+	}
+	#end
 
 	@SuppressWarnings("checkstyle:Dynamic")
 	public function new(length:Int = 0, fixed:Bool = false, array:Array<Dynamic> = null, forceCopy:Bool = false):Void
@@ -2426,6 +2510,10 @@ abstract Vector<T>(IVector<T>)
 	public function unshift(value:T):Void;
 
 	@:noCompletion private var __tempIndex:Int;
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int;
+	@:noCompletion public function __setTempIndex(value:Int):Void;
+	#end
 }
 #else
 @SuppressWarnings("checkstyle:FieldDocComment")
@@ -2661,6 +2749,10 @@ abstract Vector<T>(VectorData<T>) from VectorData<T>
 	public var length(get, set):Int;
 
 	@:noCompletion private var __tempIndex:Int;
+	#if jvm
+	@:noCompletion public function __getTempIndex():Int;
+	@:noCompletion public function __setTempIndex(value:Int):Void;
+	#end
 
 	@:noCompletion private static function __init__()
 	{

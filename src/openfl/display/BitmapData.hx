@@ -287,7 +287,17 @@ class BitmapData implements IBitmapDrawable
 			fillColor = (fillColor << 8) | ((fillColor >> 24) & 0xFF);
 
 			#if lime
-			#if sys
+			#if wasmjs
+			var buffer = new ImageBuffer(null, width, height);
+			buffer.format = RGBA32;
+			buffer.premultiplied = true;
+			image = new Image(buffer, 0, 0, width, height, null, lime.graphics.ImageType.CANVAS);
+
+			if (fillColor != 0)
+			{
+				image.fillRect(image.rect, fillColor);
+			}
+			#elseif sys
 			var buffer = new ImageBuffer(new UInt8Array(width * height * 4), width, height);
 			buffer.format = #if wasmjs RGBA32 #else BGRA32 #end;
 			buffer.premultiplied = true;
@@ -2282,7 +2292,24 @@ class BitmapData implements IBitmapDrawable
 			// gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			// gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			// gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			#if wasmjs
+			if (image != null
+				&& image.buffer != null
+				&& image.buffer.data == null
+				&& image.buffer.__srcCanvas == null
+				&& wjs.Callbacks.jsIsNull(cast image.buffer.__srcImage))
+			{
+				// WebGL zero-initializes a texture created with null data. A transparent
+				// BitmapData used as a render target does not need a CPU pixel array.
+				__textureVersion = image.version;
+			}
+			else
+			{
+				__textureVersion = -1;
+			}
+			#else
 			__textureVersion = -1;
+			#end
 		}
 
 		#if lime

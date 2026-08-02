@@ -13,6 +13,9 @@ import openfl.display._internal.Context3DTilemap;
 import openfl.display._internal.Context3DVideo;
 import openfl.display._internal.ShaderBuffer;
 import openfl.utils.ObjectPool;
+#if wasmjs
+import openfl.utils._internal.Float32Array;
+#end
 import openfl.display3D.Context3DClearMask;
 import openfl.display3D.Context3D;
 import openfl.geom.ColorTransform;
@@ -305,8 +308,29 @@ class OpenGLRenderer extends DisplayObjectRenderer
 	/**
 		Applies render matrix to the active shader, if compatible with OpenFL core shaders
 	**/
-	public function applyMatrix(matrix:Array<Float>):Void
+	public function applyMatrix(matrix:#if wasmjs Float32Array #else Array<Float> #end):Void
 	{
+		#if wasmjs
+		if (__currentShaderBuffer != null)
+		{
+			// ShaderBuffer keeps the public Array<Float> contract. This is a rare
+			// graphics-command path, so copy only here instead of boxing 16 values
+			// for every normal bitmap/tile draw.
+			for (i in 0...16)
+			{
+				__values[i] = matrix[i];
+			}
+			__currentShaderBuffer.addFloatOverride("openfl_Matrix", __values);
+		}
+		else if (__currentShader != null)
+		{
+			if (__currentShader.__matrix != null)
+			{
+				__currentShader.__matrix.value = null;
+				__currentShader.__matrix.__typedFloatValue = matrix;
+			}
+		}
+		#else
 		if (__currentShaderBuffer != null)
 		{
 			__currentShaderBuffer.addFloatOverride("openfl_Matrix", matrix);
@@ -315,6 +339,7 @@ class OpenGLRenderer extends DisplayObjectRenderer
 		{
 			if (__currentShader.__matrix != null) __currentShader.__matrix.value = matrix;
 		}
+		#end
 	}
 
 	/**
@@ -327,6 +352,9 @@ class OpenGLRenderer extends DisplayObjectRenderer
 	{
 		if (gl != null)
 		{
+			#if wasmjs
+			return cast __getMatrix(transform, AUTO);
+			#else
 			var values = __getMatrix(transform, AUTO);
 
 			for (i in 0...16)
@@ -335,6 +363,7 @@ class OpenGLRenderer extends DisplayObjectRenderer
 			}
 
 			return __matrix;
+			#end
 		}
 		else
 		{
@@ -483,7 +512,13 @@ class OpenGLRenderer extends DisplayObjectRenderer
 			if (__currentShader.__textureSize != null) __currentShader.__textureSize.value = null;
 			if (__currentShader.__hasColorTransform != null) __currentShader.__hasColorTransform.value = null;
 			if (__currentShader.__position != null) __currentShader.__position.value = null;
-			if (__currentShader.__matrix != null) __currentShader.__matrix.value = null;
+			if (__currentShader.__matrix != null)
+			{
+				__currentShader.__matrix.value = null;
+				#if wasmjs
+				__currentShader.__matrix.__typedFloatValue = null;
+				#end
+			}
 			__currentShader.__clearUseArray();
 		}
 	}
@@ -498,7 +533,8 @@ class OpenGLRenderer extends DisplayObjectRenderer
 		// __gl.glProgram = other.__gl.glProgram;
 	}
 
-	@:noCompletion private function __getMatrix(transform:Matrix, pixelSnapping:PixelSnapping):Array<Float>
+	@:noCompletion private function __getMatrix(transform:Matrix,
+			pixelSnapping:PixelSnapping):#if wasmjs Float32Array #else Array<Float> #end
 	{
 		var _matrix = Matrix.__pool.get();
 		_matrix.copyFrom(transform);
@@ -524,14 +560,20 @@ class OpenGLRenderer extends DisplayObjectRenderer
 		__matrix[13] = _matrix.ty;
 		__matrix.append(__flipped ? __projectionFlipped : __projection);
 
+		#if !wasmjs
 		for (i in 0...16)
 		{
 			__values[i] = __matrix[i];
 		}
+		#end
 
 		Matrix.__pool.release(_matrix);
 
+		#if wasmjs
+		return cast __matrix;
+		#else
 		return __values;
+		#end
 	}
 
 	@:noCompletion private function __initShader(shader:Shader):Shader

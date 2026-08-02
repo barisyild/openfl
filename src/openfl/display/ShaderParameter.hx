@@ -160,6 +160,9 @@ import openfl.display3D.Context3D;
 	@:noCompletion private var __isInt:Bool;
 	@:noCompletion private var __isUniform:Bool;
 	@:noCompletion private var __length:Int;
+	#if wasmjs
+	@:noCompletion private var __typedFloatValue:Float32Array;
+	#end
 	@:noCompletion private var __uniformMatrix:Float32Array;
 	@:noCompletion private var __useArray:Bool;
 
@@ -199,6 +202,19 @@ import openfl.display3D.Context3D;
 		var boolValue:Array<Bool> = __isBool ? cast value : null;
 		var floatValue:Array<Float> = __isFloat ? cast value : null;
 		var intValue:Array<Int> = __isInt ? cast value : null;
+
+		#if wasmjs
+		if (__isUniform
+			&& overrideValue == null
+			&& value == null
+			&& __typedFloatValue != null
+			&& type == MATRIX4X4
+			&& __typedFloatValue.length >= __length)
+		{
+			gl.uniformMatrix4fv(index, false, __typedFloatValue);
+			return;
+		}
+		#end
 
 		if (__isUniform)
 		{
