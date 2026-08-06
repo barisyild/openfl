@@ -257,7 +257,7 @@ class Video extends DisplayObject
 	{
 		__stream = netStream;
 
-		#if (js && html5)
+		#if ((js && html5) || wasmjs)
 		if (__stream != null && __stream.__video != null && !__stream.__closed)
 		{
 			__stream.__video.play();
@@ -276,7 +276,7 @@ class Video extends DisplayObject
 
 	@:noCompletion private override function __enterFrame(deltaTime:Int):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || wasmjs)
 		if (__renderable && __stream != null)
 		{
 			__setRenderDirty();
@@ -323,7 +323,7 @@ class Video extends DisplayObject
 
 	@:noCompletion private function __getTexture(context:Context3D):RectangleTexture
 	{
-		#if (js && html5)
+		#if ((js && html5) || wasmjs)
 		if (__stream == null || __stream.__video == null) return null;
 
 		var gl = context.__context.webgl;
@@ -338,7 +338,11 @@ class Video extends DisplayObject
 			}
 
 			context.__bindGLTexture2D(__texture.__textureID);
+			#if (js && html5)
 			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, format, gl.UNSIGNED_BYTE, __stream.__video);
+			#else
+			wjs.VideoBridge.texImage2D(cast gl, gl.TEXTURE_2D, internalFormat, format, gl.UNSIGNED_BYTE, __stream.__video);
+			#end
 
 			__textureTime = __stream.__video.currentTime;
 		}
@@ -459,7 +463,7 @@ class Video extends DisplayObject
 
 	@:noCompletion private function get_videoHeight():Int
 	{
-		#if (js && html5)
+		#if ((js && html5) || wasmjs)
 		if (__stream != null && __stream.__video != null)
 		{
 			return Std.int(__stream.__video.videoHeight);
@@ -471,7 +475,7 @@ class Video extends DisplayObject
 
 	@:noCompletion private function get_videoWidth():Int
 	{
-		#if (js && html5)
+		#if ((js && html5) || wasmjs)
 		if (__stream != null && __stream.__video != null)
 		{
 			return Std.int(__stream.__video.videoWidth);
