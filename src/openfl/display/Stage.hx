@@ -1392,7 +1392,7 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 				#end
 
 			case CANVAS:
-				#if (js && html5)
+				#if ((js && html5) || (wasmjs))
 				__renderer = new CanvasRenderer(window.context.canvas2D);
 				#end
 

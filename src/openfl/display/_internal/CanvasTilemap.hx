@@ -27,7 +27,7 @@ class CanvasTilemap
 {
 	public static inline function render(tilemap:Tilemap, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		if (!tilemap.__renderable || tilemap.__group.__tiles.length == 0) return;
 
 		var alpha = renderer.__getAlpha(tilemap.__worldAlpha);
@@ -67,7 +67,7 @@ class CanvasTilemap
 			alphaEnabled:Bool, worldAlpha:Float, blendModeEnabled:Bool, defaultBlendMode:BlendMode, cacheBitmapData:BitmapData, source:Dynamic,
 			rect:Rectangle):Void
 	{
-		#if (js && html5)
+		#if ((js && html5) || (wasmjs))
 		var context = renderer.context;
 		var roundPixels = renderer.__roundPixels;
 
