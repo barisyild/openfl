@@ -334,6 +334,13 @@ class SharedObject extends EventDispatcher
 			{
 				storage.removeItem(__localPath + ":" + __name);
 			}
+			#elseif wasmjs
+			var storage = tjs._jso.Storage.getLocalStorage();
+
+			if (storage != null)
+			{
+				storage.removeItem(__localPath + ":" + __name);
+			}
 			#else
 			var path = __getPath(__localPath, __name);
 
@@ -464,6 +471,14 @@ class SharedObject extends EventDispatcher
 		{
 			#if (js && html5)
 			var storage = Browser.getLocalStorage();
+
+			if (storage != null)
+			{
+				storage.removeItem(__localPath + ":" + __name);
+				storage.setItem(__localPath + ":" + __name, encodedData);
+			}
+			#elseif wasmjs
+			var storage = tjs._jso.Storage.getLocalStorage();
 
 			if (storage != null)
 			{
@@ -697,6 +712,25 @@ class SharedObject extends EventDispatcher
 					}
 
 					localPath = Browser.window.location.pathname;
+				}
+
+				if (storage != null && encodedData == null)
+				{
+					encodedData = storage.getItem(localPath + ":" + name);
+				}
+				#elseif wasmjs
+				var storage = tjs._jso.Storage.getLocalStorage();
+				var location = tjs._jso.Window.current().getLocation();
+
+				if (localPath == null)
+				{
+					if (storage != null)
+					{
+						encodedData = storage.getItem(location.getFullURL() + ":" + name);
+						storage.removeItem(location.getFullURL() + ":" + name);
+					}
+
+					localPath = location.getPathName();
 				}
 
 				if (storage != null && encodedData == null)
